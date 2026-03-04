@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { getShow, getAllEpisodes } from "@/lib/omdb";
 import type { Episode } from "@/lib/omdb";
 import { AdUnit } from "@/components/AdUnit";
+import { TrackView } from "@/components/TrackView";
 import { FEATURED_SHOWS } from "@/lib/featured-shows";
 import { imdbIdFromSlug } from "@/lib/slug";
 
@@ -150,6 +151,7 @@ export default async function ShowPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
+      <TrackView slug={params.slug} title={show.title} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
