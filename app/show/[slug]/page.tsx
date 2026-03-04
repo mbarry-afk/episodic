@@ -57,12 +57,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 // Each entry is a complete Tailwind literal so the scanner never purges them.
 const RATING_SCALE = [
-  { min: 9.5, classes: "bg-emerald-400 text-emerald-950" },
-  { min: 9.0, classes: "bg-green-400 text-green-950" },
-  { min: 8.5, classes: "bg-green-300 text-green-950" },
-  { min: 8.0, classes: "bg-yellow-400 text-yellow-900" },
-  { min: 7.5, classes: "bg-orange-300 text-orange-950" },
-  { min: 7.0, classes: "bg-orange-500 text-white" },
+  { min: 8.5, classes: "bg-green-400 text-green-950" },
+  { min: 7.0, classes: "bg-yellow-400 text-yellow-900" },
   { min: 0,   classes: "bg-red-500 text-white" },
 ] as const;
 
@@ -140,13 +136,9 @@ export default async function ShowPage({ params }: Props) {
   };
 
   const LEGEND = [
-    { label: "9.5+",    classes: "bg-emerald-400" },
-    { label: "9.0–9.4", classes: "bg-green-400" },
-    { label: "8.5–8.9", classes: "bg-green-300" },
-    { label: "8.0–8.4", classes: "bg-yellow-400" },
-    { label: "7.5–7.9", classes: "bg-orange-300" },
-    { label: "7.0–7.4", classes: "bg-orange-500" },
-    { label: "<7.0",    classes: "bg-red-500" },
+    { label: "Bingeable",  sublabel: "8.5+", classes: "bg-green-400" },
+    { label: "Good enough", sublabel: "7.0–8.4", classes: "bg-yellow-400" },
+    { label: "Skippable",  sublabel: "<7.0", classes: "bg-red-500" },
   ];
 
   return (
@@ -225,10 +217,11 @@ export default async function ShowPage({ params }: Props) {
 
             {/* Legend */}
             <div className="mb-8 flex flex-wrap gap-x-4 gap-y-2">
-              {LEGEND.map(({ label, classes }) => (
-                <div key={label} className="flex items-center gap-1.5 text-xs">
-                  <div className={`h-3 w-3 rounded-sm ${classes}`} />
-                  <span className="text-zinc-400">{label}</span>
+              {LEGEND.map(({ label, sublabel, classes }) => (
+                <div key={label} className="flex items-center gap-2">
+                  <div className={`h-3 w-3 flex-shrink-0 rounded-sm ${classes}`} />
+                  <span className="text-sm font-medium text-zinc-200">{label}</span>
+                  <span className="text-xs text-zinc-500">{sublabel}</span>
                 </div>
               ))}
             </div>
