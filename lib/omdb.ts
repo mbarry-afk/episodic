@@ -1,3 +1,5 @@
+import { getImdbRating } from "./imdb-ratings";
+
 const BASE_URL = "https://www.omdbapi.com";
 
 function apiKey(): string {
@@ -174,15 +176,21 @@ export async function getSeason(
     if (data.Response === "False" || !data.Episodes) return null;
 
     const episodes: Episode[] = data.Episodes.map((ep) => {
-      const rating = parseFloat(ep.imdbRating);
+      const omdbRating = parseFloat(ep.imdbRating);
+      const rating = isNaN(omdbRating) ? null : omdbRating;
+
+      // OMDb often omits ratings for newer/less-voted episodes.
+      // Fall back to the local IMDb dataset when that happens.
+      const fallback = rating === null ? getImdbRating(ep.imdbID) : null;
+
       return {
         season,
         episode: parseInt(ep.Episode, 10),
         imdbId: ep.imdbID,
         title: ep.Title,
         released: val(ep.Released),
-        rating: isNaN(rating) ? null : rating,
-        votes: null, // not available from the season endpoint
+        rating: rating ?? fallback?.rating ?? null,
+        votes: fallback?.votes ?? null,
       };
     });
 
