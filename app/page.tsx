@@ -45,9 +45,12 @@ export default function Home() {
     <div className="min-h-screen bg-zinc-950 text-white">
       {/* Search hero */}
       <div className="flex flex-col items-center px-4 pt-24 pb-10">
-        <h1 className="mb-8 text-5xl font-bold tracking-tight text-white">
+        <h1 className="mb-3 text-5xl font-bold tracking-tight text-white">
           Episodic
         </h1>
+        <p className="mb-8 text-zinc-400">
+          Every episode rated. Every season at a glance.
+        </p>
         <div className="relative w-full max-w-xl">
           <input
             type="text"
