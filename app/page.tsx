@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Show } from "@/lib/omdb";
+import { makeSlug } from "@/lib/slug";
 
 export default function Home() {
   const [query, setQuery] = useState("");
@@ -77,7 +78,7 @@ export default function Home() {
             {results.map((show) => (
               <Link
                 key={show.imdbId}
-                href={`/show/${show.imdbId}`}
+                href={`/show/${makeSlug(show.title, show.imdbId)}`}
                 className="group flex flex-col overflow-hidden rounded-xl bg-zinc-900 transition-colors hover:bg-zinc-800"
               >
                 {/* Poster */}

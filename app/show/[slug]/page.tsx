@@ -6,6 +6,7 @@ import { getShow, getAllEpisodes } from "@/lib/omdb";
 import type { Episode } from "@/lib/omdb";
 import { AdUnit } from "@/components/AdUnit";
 import { FEATURED_SHOWS } from "@/lib/featured-shows";
+import { imdbIdFromSlug } from "@/lib/slug";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://episodic.app";
 
@@ -16,15 +17,16 @@ interface Props {
 // Pre-render featured shows at build time; all others render on demand and
 // are cached (equivalent to Pages Router's fallback: 'blocking').
 export function generateStaticParams() {
-  return FEATURED_SHOWS.map((slug) => ({ slug }));
+  return FEATURED_SHOWS.map(({ slug }) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const show = await getShow(params.slug);
+  const imdbId = imdbIdFromSlug(params.slug);
+  const show = await getShow(imdbId);
   if (!show) return {};
 
   const title = `${show.title} Episode Ratings | Episodic`;
-  const description = `IMDb ratings for every episode of ${show.title}, sorted by season. See which episodes are the best and worst.`;
+  const description = `IMDb ratings for every episode of ${show.title} (${show.year}). See which episodes are the best and worst rated across all seasons.`;
   const canonical = `${SITE_URL}/show/${params.slug}`;
   const images = show.poster ? [{ url: show.poster }] : [];
 
@@ -91,10 +93,11 @@ function formatDate(iso: string | null): string | null {
 // ---------------------------------------------------------------------------
 
 export default async function ShowPage({ params }: Props) {
-  const show = await getShow(params.slug);
+  const imdbId = imdbIdFromSlug(params.slug);
+  const show = await getShow(imdbId);
   if (!show || !show.totalSeasons) notFound();
 
-  const allEpisodes = await getAllEpisodes(params.slug, show.totalSeasons);
+  const allEpisodes = await getAllEpisodes(imdbId, show.totalSeasons);
 
   // Group and sort by season → episode
   const seasonMap = new Map<number, Episode[]>();
@@ -123,6 +126,7 @@ export default async function ShowPage({ params }: Props) {
     ...(genres.length && { genre: genres }),
     ...(show.totalSeasons && { numberOfSeasons: show.totalSeasons }),
     url: `${SITE_URL}/show/${params.slug}`,
+    sameAs: `https://www.imdb.com/title/${imdbId}/`,
     ...(show.imdbRating && {
       aggregateRating: {
         "@type": "AggregateRating",

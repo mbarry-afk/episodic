@@ -15,8 +15,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Episodic",
-  description: "TV show episode ratings at a glance",
+  title: "Episodic — TV Episode Ratings",
+  description: "Explore IMDb ratings for every episode of your favourite TV shows, visualised by season.",
 };
 
 export default function RootLayout({
