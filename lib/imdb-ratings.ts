@@ -1,38 +1,32 @@
 /**
- * Read-only access to the local IMDb ratings SQLite database built by
- * `npm run update-ratings`. All functions return null gracefully if the
- * database file doesn't exist yet (e.g. on a fresh clone before first run).
+ * Async access to the hosted Turso (libSQL) episode ratings database.
+ * Exports getBatchImdbRatings() for efficient per-season lookups.
+ * Returns an empty Map gracefully when env vars are not set.
  */
 
-import Database from "better-sqlite3";
-import path from "path";
-import fs from "fs";
-
-const DB_PATH = path.join(process.cwd(), "data", "imdb.db");
+import { createClient, type Client } from "@libsql/client";
 
 // ---------------------------------------------------------------------------
-// Singleton connection — survives Next.js hot-reloads via the global object
+// Singleton client
 // ---------------------------------------------------------------------------
 
-type DbOrNull = Database.Database | null;
-const g = global as typeof global & { __imdbDb?: DbOrNull };
+let _client: Client | null | undefined; // undefined = not yet initialised
 
-function getDb(): DbOrNull {
-  if ("__imdbDb" in g) return g.__imdbDb ?? null;
+function getClient(): Client | null {
+  if (_client !== undefined) return _client;
 
-  if (!fs.existsSync(DB_PATH)) {
-    // Database hasn't been built yet — degrade silently
-    g.__imdbDb = null;
+  const url = process.env.TURSO_DATABASE_URL;
+  if (!url) {
+    _client = null;
     return null;
   }
 
-  try {
-    g.__imdbDb = new Database(DB_PATH, { readonly: true, fileMustExist: true });
-  } catch {
-    g.__imdbDb = null;
-  }
+  _client = createClient({
+    url,
+    authToken: process.env.TURSO_AUTH_TOKEN,
+  });
 
-  return g.__imdbDb;
+  return _client;
 }
 
 // ---------------------------------------------------------------------------
@@ -46,25 +40,38 @@ export interface ImdbRating {
 }
 
 /**
- * Look up an episode rating by its IMDb ID (tconst).
- * Returns null if the DB is missing or the episode has no rating.
+ * Batch-look up ratings for a list of episode tconsts.
+ * Returns a Map keyed by tconst — missing entries mean no rating found.
+ * Returns an empty Map if the database is not configured.
  */
-export function getImdbRating(tconst: string): ImdbRating | null {
-  const db = getDb();
-  if (!db) return null;
+export async function getBatchImdbRatings(
+  tconsts: string[]
+): Promise<Map<string, ImdbRating>> {
+  const map = new Map<string, ImdbRating>();
+  if (tconsts.length === 0) return map;
+
+  const db = getClient();
+  if (!db) return map;
 
   try {
-    const row = db
-      .prepare("SELECT rating, votes FROM episode_ratings WHERE tconst = ?")
-      .get(tconst) as { rating: number; votes: number } | undefined;
+    const placeholders = tconsts.map(() => "?").join(", ");
+    const result = await db.execute({
+      sql: `SELECT tconst, rating, votes FROM episode_ratings WHERE tconst IN (${placeholders})`,
+      args: tconsts,
+    });
 
-    if (!row) return null;
-
-    return {
-      rating: row.rating,
-      votes: row.votes.toLocaleString("en-US"),
-    };
+    for (const row of result.rows) {
+      const tconst = row[0] as string;
+      const rating = row[1] as number;
+      const votes = row[2] as number;
+      map.set(tconst, {
+        rating,
+        votes: votes.toLocaleString("en-US"),
+      });
+    }
   } catch {
-    return null;
+    // Graceful degradation — return whatever we have so far
   }
+
+  return map;
 }

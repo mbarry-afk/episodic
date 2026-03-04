@@ -1,4 +1,4 @@
-import { getImdbRating } from "./imdb-ratings";
+import { getBatchImdbRatings } from "./imdb-ratings";
 
 const BASE_URL = "https://www.omdbapi.com";
 
@@ -175,22 +175,28 @@ export async function getSeason(
     const data: RawSeason = await res.json();
     if (data.Response === "False" || !data.Episodes) return null;
 
-    const episodes: Episode[] = data.Episodes.map((ep) => {
+    const parsed = data.Episodes.map((ep) => {
       const omdbRating = parseFloat(ep.imdbRating);
-      const rating = isNaN(omdbRating) ? null : omdbRating;
-
-      // OMDb often omits ratings for newer/less-voted episodes.
-      // Fall back to the local IMDb dataset when that happens.
-      const fallback = rating === null ? getImdbRating(ep.imdbID) : null;
-
       return {
         season,
         episode: parseInt(ep.Episode, 10),
         imdbId: ep.imdbID,
         title: ep.Title,
         released: val(ep.Released),
-        rating: rating ?? fallback?.rating ?? null,
-        votes: fallback?.votes ?? null,
+        rating: isNaN(omdbRating) ? null : omdbRating,
+      };
+    });
+
+    // For episodes missing an OMDb rating, batch-fetch from Turso in one query.
+    const unrated = parsed.filter((ep) => ep.rating === null).map((ep) => ep.imdbId);
+    const fallbacks = await getBatchImdbRatings(unrated);
+
+    const episodes: Episode[] = parsed.map((ep) => {
+      const fb = ep.rating === null ? fallbacks.get(ep.imdbId) : undefined;
+      return {
+        ...ep,
+        rating: ep.rating ?? fb?.rating ?? null,
+        votes: fb?.votes ?? null,
       };
     });
 

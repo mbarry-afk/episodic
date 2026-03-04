@@ -11,7 +11,9 @@
  * rather than in a JS Map (the episode file has ~8 million rows).
  */
 
+import "dotenv/config";
 import Database from "better-sqlite3";
+import { createClient } from "@libsql/client";
 import https from "https";
 import zlib from "zlib";
 import readline from "readline";
@@ -161,10 +163,62 @@ async function main() {
     .prepare("SELECT COUNT(*) AS n FROM episode_ratings")
     .get() as { n: number };
 
+  console.log(`\n✅  Local DB — ${n.toLocaleString()} episode ratings stored`);
+  console.log(`   ${DB_PATH}`);
+
+  // ── Phase 2: push to Turso ────────────────────────────────────────────────
+
+  const tursoUrl = process.env.TURSO_DATABASE_URL;
+  if (!tursoUrl) {
+    console.log("\n⚠️  TURSO_DATABASE_URL not set — skipping Turso upload.\n");
+    db.close();
+    return;
+  }
+
+  console.log("\n☁️  Pushing to Turso…");
+
+  const turso = createClient({
+    url: tursoUrl,
+    authToken: process.env.TURSO_AUTH_TOKEN,
+  });
+
+  // Create table if it doesn't exist
+  await turso.execute(`
+    CREATE TABLE IF NOT EXISTS episode_ratings (
+      tconst  TEXT    PRIMARY KEY,
+      rating  REAL    NOT NULL,
+      votes   INTEGER NOT NULL
+    )
+  `);
+
+  // Wipe existing data so this is always a full refresh
+  await turso.execute("DELETE FROM episode_ratings");
+
+  // Stream all rows from local SQLite → Turso in batches of 500
+  const TURSO_BATCH = 500;
+  const all = db
+    .prepare("SELECT tconst, rating, votes FROM episode_ratings")
+    .all() as Array<{ tconst: string; rating: number; votes: number }>;
+
   db.close();
 
-  console.log(`\n✅  Done — ${n.toLocaleString()} episode ratings stored`);
-  console.log(`   ${DB_PATH}\n`);
+  let pushed = 0;
+  for (let i = 0; i < all.length; i += TURSO_BATCH) {
+    const slice = all.slice(i, i + TURSO_BATCH);
+    await turso.batch(
+      slice.map((row) => ({
+        sql: "INSERT OR REPLACE INTO episode_ratings (tconst, rating, votes) VALUES (?, ?, ?)",
+        args: [row.tconst, row.rating, row.votes],
+      })),
+      "write"
+    );
+    pushed += slice.length;
+    if (pushed % 50_000 === 0 || pushed === all.length) {
+      progress("pushed:", pushed);
+    }
+  }
+
+  console.log(`\n✅  Turso — ${pushed.toLocaleString()} rows uploaded\n`);
 }
 
 main().catch((err) => {
