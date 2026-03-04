@@ -11,9 +11,9 @@
  * rather than in a JS Map (the episode file has ~8 million rows).
  */
 
-import "dotenv/config";
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
 import Database from "better-sqlite3";
-import { createClient } from "@libsql/client";
 import https from "https";
 import zlib from "zlib";
 import readline from "readline";
@@ -177,40 +177,48 @@ async function main() {
 
   console.log("\n☁️  Pushing to Turso…");
 
-  const turso = createClient({
-    url: tursoUrl,
-    authToken: process.env.TURSO_AUTH_TOKEN,
-  });
+  // Use the Turso HTTP pipeline API directly — avoids @libsql/client's
+  // Node.js v24 ReadableStream incompatibility.
+  const authToken = process.env.TURSO_AUTH_TOKEN ?? "";
+  const apiBase = tursoUrl.replace(/^libsql:\/\//, "https://");
 
-  // Create table if it doesn't exist
-  await turso.execute(`
-    CREATE TABLE IF NOT EXISTS episode_ratings (
-      tconst  TEXT    PRIMARY KEY,
-      rating  REAL    NOT NULL,
-      votes   INTEGER NOT NULL
-    )
-  `);
+  async function tursoExec(sql: string, args: (string | number)[] = []) {
+    const body = JSON.stringify({
+      requests: [
+        { type: "execute", stmt: { sql, args: args.map((v) => typeof v === "number" ? { type: "float", value: v } : { type: "text", value: v }) } },
+        { type: "close" },
+      ],
+    });
+    const res = await fetch(`${apiBase}/v2/pipeline`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+      body,
+    });
+    if (!res.ok) throw new Error(`Turso HTTP ${res.status}: ${await res.text()}`);
+  }
 
-  // Wipe existing data so this is always a full refresh
-  await turso.execute("DELETE FROM episode_ratings");
+  // Create table and wipe existing data
+  await tursoExec(`CREATE TABLE IF NOT EXISTS episode_ratings (tconst TEXT PRIMARY KEY, rating REAL NOT NULL, votes INTEGER NOT NULL)`);
+  await tursoExec("DELETE FROM episode_ratings");
 
-  // Stream all rows from local SQLite → Turso in batches of 500
-  const TURSO_BATCH = 500;
+  // Read all rows from local SQLite
   const all = db
     .prepare("SELECT tconst, rating, votes FROM episode_ratings")
     .all() as Array<{ tconst: string; rating: number; votes: number }>;
 
   db.close();
 
+  // Push in batches of 100 rows per HTTP request
+  const TURSO_BATCH = 100;
   let pushed = 0;
+
   for (let i = 0; i < all.length; i += TURSO_BATCH) {
     const slice = all.slice(i, i + TURSO_BATCH);
-    await turso.batch(
-      slice.map((row) => ({
-        sql: "INSERT OR REPLACE INTO episode_ratings (tconst, rating, votes) VALUES (?, ?, ?)",
-        args: [row.tconst, row.rating, row.votes],
-      })),
-      "write"
+    const placeholders = slice.map(() => "(?, ?, ?)").join(", ");
+    const args = slice.flatMap((r) => [r.tconst, r.rating, r.votes]);
+    await tursoExec(
+      `INSERT OR REPLACE INTO episode_ratings (tconst, rating, votes) VALUES ${placeholders}`,
+      args
     );
     pushed += slice.length;
     if (pushed % 50_000 === 0 || pushed === all.length) {
