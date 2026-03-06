@@ -252,11 +252,14 @@ export default async function ShowPage({ params }: Props) {
                       return (
                         <div key={ep.imdbId} className="group relative">
                           {/* Cell */}
-                          <div
-                            className={`flex h-11 w-11 cursor-default select-none items-center justify-center rounded text-[11px] font-bold ${color}`}
+                          <a
+                            href={`https://www.imdb.com/title/${ep.imdbId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`flex h-11 w-11 cursor-pointer select-none items-center justify-center rounded text-[11px] font-bold ${color}`}
                           >
                             {ep.rating?.toFixed(1) ?? "—"}
-                          </div>
+                          </a>
 
                           {/* Tooltip — CSS-only, no JS required */}
                           <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden w-52 -translate-x-1/2 rounded-xl bg-zinc-800 p-3 shadow-2xl ring-1 ring-white/10 group-hover:block">
