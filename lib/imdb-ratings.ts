@@ -62,16 +62,16 @@ export async function getBatchImdbRatings(
   if (!db) return map;
 
   try {
-    console.log(`[imdb-ratings] Looking up ${tconsts.length} tconsts:`, tconsts.slice(0, 5), tconsts.length > 5 ? `...+${tconsts.length - 5} more` : "");
     const placeholders = tconsts.map(() => "?").join(", ");
-    const result = await db.execute({
-      sql: `SELECT tconst, rating, votes FROM episode_ratings WHERE tconst IN (${placeholders})`,
-      args: tconsts,
-    });
+    const sql = `SELECT tconst, rating, votes FROM episode_ratings WHERE tconst IN (${placeholders})`;
+    console.log(`[imdb-ratings] Querying ${tconsts.length} tconsts:`, tconsts);
+    console.log(`[imdb-ratings] SQL:`, sql);
+    console.log(`[imdb-ratings] Args:`, tconsts);
+    const result = await db.execute({ sql, args: tconsts });
 
-    console.log(`[imdb-ratings] Query returned ${result.rows.length} rows for ${tconsts.length} tconsts`);
+    console.log(`[imdb-ratings] Raw rows (${result.rows.length}):`, JSON.stringify(result.rows));
     if (result.rows.length === 0) {
-      console.warn("[imdb-ratings] No rows returned — tconsts may not exist in DB or DB may be empty");
+      console.warn("[imdb-ratings] No rows returned — tconsts may not match DB or DB may be empty");
     }
 
     for (const row of result.rows) {

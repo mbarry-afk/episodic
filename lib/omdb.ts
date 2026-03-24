@@ -188,8 +188,10 @@ export async function getSeason(
     });
 
     // For episodes missing an OMDb rating, batch-fetch from Turso in one query.
+    const rated = parsed.filter((ep) => ep.rating !== null).map((ep) => ep.imdbId);
     const unrated = parsed.filter((ep) => ep.rating === null).map((ep) => ep.imdbId);
-    console.log(`[omdb] Season ${season}: ${parsed.length} episodes, ${unrated.length} unrated — falling back to Turso for:`, unrated);
+    console.log(`[omdb] Season ${season}: ${parsed.length} eps total — ${rated.length} have OMDb rating:`, rated);
+    console.log(`[omdb] Season ${season}: ${unrated.length} unrated (going to Turso):`, unrated);
     const fallbacks = await getBatchImdbRatings(unrated);
     console.log(`[omdb] Turso fallback returned ${fallbacks.size} ratings:`, Object.fromEntries(fallbacks));
 
