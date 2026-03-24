@@ -17,10 +17,18 @@ function getClient(): Client | null {
 
   const url = process.env.TURSO_DATABASE_URL;
   if (!url) {
+    console.warn("[imdb-ratings] TURSO_DATABASE_URL is not set — ratings disabled");
     _client = null;
     return null;
   }
 
+  if (!process.env.TURSO_AUTH_TOKEN) {
+    console.warn("[imdb-ratings] TURSO_AUTH_TOKEN is not set — ratings disabled");
+    _client = null;
+    return null;
+  }
+
+  console.log("[imdb-ratings] Initialising Turso client for", url);
   _client = createClient({
     url,
     authToken: process.env.TURSO_AUTH_TOKEN,
@@ -60,6 +68,8 @@ export async function getBatchImdbRatings(
       args: tconsts,
     });
 
+    console.log(`[imdb-ratings] Query returned ${result.rows.length} rows for ${tconsts.length} tconsts`);
+
     for (const row of result.rows) {
       const tconst = row[0] as string;
       const rating = row[1] as number;
@@ -69,7 +79,8 @@ export async function getBatchImdbRatings(
         votes: votes.toLocaleString("en-US"),
       });
     }
-  } catch {
+  } catch (err) {
+    console.error("[imdb-ratings] Query failed:", err);
     // Graceful degradation — return whatever we have so far
   }
 
