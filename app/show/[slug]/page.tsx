@@ -4,7 +4,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getShow, getAllEpisodes } from "@/lib/omdb";
 import type { Episode } from "@/lib/omdb";
-import { AdUnit } from "@/components/AdUnit";
 import { TrackView } from "@/components/TrackView";
 import { FEATURED_SHOWS } from "@/lib/featured-shows";
 import { imdbIdFromSlug } from "@/lib/slug";
@@ -288,23 +287,10 @@ export default async function ShowPage({ params }: Props) {
                     })}
                   </div>
 
-                  {/* Leaderboard ad after every 2nd season (not after the last) */}
-                  {(index + 1) % 2 === 0 && index < seasons.length - 1 && (
-                    <div className="mt-10 hidden md:flex justify-center">
-                      <AdUnit size="leaderboard" />
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
           </main>
-
-          {/* ── Sidebar: rectangle ad ── */}
-          <aside className="hidden lg:block w-[300px] flex-shrink-0">
-            <div className="sticky top-6">
-              <AdUnit size="rectangle" />
-            </div>
-          </aside>
 
         </div>
       </div>

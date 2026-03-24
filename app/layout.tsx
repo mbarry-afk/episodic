@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import { AdUnit } from "@/components/AdUnit";
 import { Analytics } from "@vercel/analytics/next";
 
 const geistSans = localFont({
@@ -30,12 +29,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} bg-zinc-950 text-white antialiased`}
       >
-        {/* Site header — leaderboard only shown on md+ to avoid horizontal overflow */}
-        <header className="border-b border-zinc-800 bg-zinc-900">
-          <div className="hidden md:flex items-center justify-center px-4 py-3">
-            <AdUnit size="leaderboard" />
-          </div>
-        </header>
+        {/* Site header */}
+        <header className="border-b border-zinc-800 bg-zinc-900" />
 
         {children}
         <Analytics />
