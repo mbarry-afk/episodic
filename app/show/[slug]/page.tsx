@@ -8,7 +8,7 @@ import { TrackView } from "@/components/TrackView";
 import { FEATURED_SHOWS } from "@/lib/featured-shows";
 import { imdbIdFromSlug } from "@/lib/slug";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://episodic.app";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://episodic.mrbarry.dev";
 
 interface Props {
   params: { slug: string };

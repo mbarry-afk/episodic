@@ -14,9 +14,12 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://episodic.mrbarry.dev";
+
 export const metadata: Metadata = {
   title: "Episodic — TV Episode Ratings",
   description: "Explore IMDb ratings for every episode of your favourite TV shows, visualised by season.",
+  alternates: { canonical: siteUrl },
 };
 
 export default function RootLayout({
