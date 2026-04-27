@@ -14,8 +14,9 @@ interface Props {
   params: { slug: string };
 }
 
-// Pre-render featured shows at build time; all others render on demand and
-// are cached (equivalent to Pages Router's fallback: 'blocking').
+// Pre-render featured shows at build time; all others render on demand.
+export const dynamicParams = true;
+
 export function generateStaticParams() {
   return FEATURED_SHOWS.map(({ slug }) => ({ slug }));
 }
